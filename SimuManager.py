@@ -1,3 +1,5 @@
+#シミュレーション関連の機能まとめ
+
 import Policy
 from Task import TreeBandit
 import numpy as np
@@ -5,16 +7,23 @@ import matplotlib.pyplot as plt
 import csv
 
 class SimulationManager():
-    def __init__(self, n_agent, Layer, simulationtimes, episodetimes, task):
+    def __init__(self, n_agent, simulationtimes, episodetimes, task):
         self.N = n_agent
         self.AgentList = None
         self.task = task
         self.simulationtimes = simulationtimes
         self.episodetimes = episodetimes
         self.R_share_recode = np.zeros((episodetimes))
+        self.RSflag = 0
 
+    #RSエージェントの追加(list管理)
     def addRS(self, R, N_act, N_state, Alpha, Gamma, TAlpha, TGamma, N_Epi, N_Simu):
         self.AgentList = [Policy.RS(R, N_act, N_state, Alpha, Gamma, TAlpha, TGamma, N_Epi, N_Simu) for _ in range(self.N)]
+        self.RSflag = 1
+
+    #Qエージェントの追加(list管理)
+    def addQagent(self, alpha, gamma, n_act, n_state, n_epi, n_simu, Ep, DicEp):
+        self.AgentList = [Policy.Agent(alpha, gamma, n_act, n_state, n_epi, n_simu, Ep, DicEp) for _ in range(self.N)]
 
     def GetAgent(self):
         return self.AgentList
@@ -53,11 +62,12 @@ class SimulationManager():
                 if NextState >= self.task.GetGoalState():
                     break
         
-        R_share = self.CulculationRshare()
-        self.R_share_recode[n_epi] += R_share[0]
-        for n in range(len(self.AgentList)):
-            self.AgentList[n].ShareReference(R_share)
-            self.AgentList[n].CountRsub(n_epi)
+        if self.RSflag == 1:
+            R_share = self.CulculationRshare()
+            self.R_share_recode[n_epi] += R_share[0]
+            for n in range(len(self.AgentList)):
+                self.AgentList[n].ShareReference(R_share)
+                self.AgentList[n].CountRsub(n_epi)
     
     def GetR_share(self):
         return self.R_share_recode
