@@ -46,6 +46,7 @@ class Bandit():
                 Pro.append(i / 10)
         return Pro
 
+#決定論的ツリーバンディット
 class TreeBandit(Environment):
     #初期化,層の厚さを受け取る
     def __init__(self, layer, SimulationTimes=0, EpisodeTimes=0):
@@ -110,6 +111,18 @@ class TreeBandit(Environment):
         
         return Agent.GetMaxReward()
 
+#確率論的ツリーバンディット
+class PTreeBandit(TreeBandit):
+    def __init__(self, layer, SimulationTimes=0, EpisodeTimes=0):
+        super().__init__(layer, SimulationTimes=0, EpisodeTimes=0)
+    
+    #報酬を返す
+    def EvaluateReward(self, State, CurrentAction):
+        if random.random() <= self.Bandit[[State], [CurrentAction]]:
+            return 1
+        else:
+            return 0
+
 class EasyMaze(Environment):
     #簡単なステージを作る
     def __init__(self, Row, Col, start, goal):
@@ -159,4 +172,59 @@ class EasyMaze(Environment):
             return 1
         else:
             return 0
-    
+
+class Criff_world(Environment):
+    #簡単なステージを作る
+    def __init__(self, Row, Col, start, goal):
+        super().__init__()
+        self.row = Row
+        self.col = Col
+        self.start = start
+        self.goal = goal
+
+    #座標に変換
+    def CoordToState(self, row, col):
+        return ((row * self.col) + col)
+    #座標からx軸を算出
+    def StateToRow(self, state):
+        return ((int)(state / self.col))
+    #座標からy軸を算出
+    def StateToCol(self, state):
+        return (state % self.col)
+    #次の座標を算出
+    def EvaluateNextState(self, action, state):
+        Upper = 0
+        Lower = 1
+        Left = 2
+        Right = 3
+
+        row = self.StateToRow(state)
+        col = self.StateToCol(state)
+
+        if action == Upper:
+            if (row) > 0:
+                row-=1
+        elif action == Lower:
+            if (row) < (self.row-1):
+                row+=1
+        elif action == Right:
+            if (col)<(self.col-1):
+                col+=1
+        elif action == Left:
+            if (col)>0:
+                col-=1
+                
+        self.NextState = self.CoordToState(row, col)
+
+    #報酬判定
+    def EvaluateReward(self, state):
+        if state == self.goal:
+            
+            return 1
+            
+        elif (self.row * (self.col -1) + 1 <= state and state <=  self.row * self.col - 2):
+            
+            return -10
+
+        else:
+            return 0
