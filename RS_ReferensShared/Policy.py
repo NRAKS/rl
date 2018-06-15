@@ -9,6 +9,7 @@ import math
 
 #Q学習アルゴリズム
 class Agent(object):
+    
     def __init__(self, Alpha, Gamma, N_Act, N_state, N_Epi, N_Simu, Ep=0, DicreaseEp=0):
         self.Q = np.zeros((N_state, N_Act))
         self.alpha = Alpha
@@ -20,9 +21,9 @@ class Agent(object):
         self.Ep = Ep
         self.Ep_init = Ep
         self.DicEp = DicreaseEp
-        self.SumRewardperEpi = np.zeros((N_Epi))
+        self.SumRewardperEpi = np.zeros((N_Epi))    #list...グラフ生成用
         self.Sumreward = np.zeros((N_Epi))
-        self.Sumreward_Epi = 0
+        self.Sumreward_Epi = 0  #
         self.step = 0
         self.SumStep = np.zeros((N_Epi))
         self.SerectAct = 0
@@ -123,6 +124,7 @@ class RS(Agent):
         if SerectAction in idx_Q[0]:
             greedy = 1
         self.SerectAct = SerectAction
+
     #T値更新
     def Tupdate(self, CurrentAction,CurrentState,NextState):
         #t値を更新(準備)
@@ -136,6 +138,7 @@ class RS(Agent):
         self.Tpost[CurrentState,CurrentAction] += self.TAlpha*(self.TGamma*self.T[NextState,ActionUP]-self.Tpost[CurrentState,CurrentAction])
 
         self.T[CurrentState,CurrentAction] = self.Tcurrent[CurrentState,CurrentAction]+self.Tpost[CurrentState,CurrentAction]
+
     #各種パラメータ初期化
     def InitParameters(self):
         super().InitParameters()
@@ -143,15 +146,19 @@ class RS(Agent):
         self.T = np.zeros((self.N_state,self.N_Act))
         self.Tcurrent = np.zeros((self.N_state,self.N_Act))
         self.Tpost = np.zeros((self.N_state,self.N_Act))
+
     #R値の共有
     def ShareReference(self, R_share):
         self.R = R_share
+        
     #行動から各種値の更新
     def Update(self,CurrentAction,CurrentState, NextState, Reward, n_epi):
         #T値の更新
         super().Update(CurrentAction, CurrentState, NextState, Reward, n_epi)
         self.Tupdate(CurrentAction, CurrentState, NextState)
     
+
+
 class UCB1_tuned(Agent):
     def __init__(self, N_Act, N_state, Alpha, Gamma, N_Epi, N_Simu):
         super().__init__(Alpha, Gamma, N_Act, N_state, N_Epi, N_Simu)

@@ -12,7 +12,7 @@ import Policy
 from SimuManager import SimulationManager
 
 #シミュレーション設定
-SimulationTimes = 1000
+SimulationTimes = 10
 EpisodeTimes = 5000
 #タスク環境設定
 Layer = 2
@@ -67,7 +67,7 @@ def PlayTask():
         for j in range(len(ave_rewardlist_per[n])):
             plt.plot(ave_rewardlist_per[n,j], label="AgentGroup:{}, num:{}".format(n, j))
     plt.legend()
-    #plt.title("output")
+    plt.title("Reward Average")
     plt.xlabel("Episode")
     plt.ylabel("Reward")
     #plt.savefig("TreeBandit_RewardAve_{}L{}s{}e.png".format(Layer,SimulationTimes, EpisodeTimes))
@@ -78,6 +78,7 @@ def PlayTask():
     for n in range(1, N_agent):
         plt.plot(R_sharelist[n], label = "Agent num:{}".format(n))
     plt.legend()
+    plt.title("Reference time development")
     plt.xlabel("Episode")
     plt.ylabel("Reference")
     #plt.savefig("TreeBandit_Rtrans_{}L{}s{}e.png".format(Layer,SimulationTimes, EpisodeTimes))

@@ -1,7 +1,7 @@
 #シミュレーション関連の機能まとめ
 
 import Policy
-from Task import TreeBandit
+from Task import DTreeBandit
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
@@ -91,6 +91,14 @@ class SimulationManager():
         # with open('TreeBandit_AveReward.csv', 'a', encoding='UTF-8') as f:
         #     writer = csv.writer(f)
         #     writer.writerow(Ave)
+
+    def get_reward(self):
+        sum_reward = np.zeros(([len(self.AgentList), self.episodetimes]))
+
+        for n in range(len(self.AgentList)):
+            sum_reward[n] = self.AgentList[n].culculationAve()
+        
+        return sum_reward
 
     def PlotRegret(self, SumRewardIdeal):
     
