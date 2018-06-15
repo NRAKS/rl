@@ -105,7 +105,7 @@ def play_task():
     plt.title("reward")
     plt.xlabel("episode")
     plt.ylabel("reward")
-    plt.savefig("Sumreward_ave_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
+    #plt.savefig("Sumreward_ave_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
     plt.show()
     #plt.figure()
 
@@ -116,7 +116,7 @@ def play_task():
     plt.title("EG time development")
     plt.xlabel("episode")
     plt.ylabel("EG")
-    plt.savefig("EG_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
+    #plt.savefig("EG_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
     plt.show()
     #plt.figure()
 
@@ -127,7 +127,7 @@ def play_task():
     plt.title("RG time development")
     plt.xlabel("episode")
     plt.ylabel("RG")
-    plt.savefig("RG_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
+    #plt.savefig("RG_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
     plt.show()
     #plt.figure()
 
