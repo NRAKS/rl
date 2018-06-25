@@ -67,13 +67,16 @@ class Agent():
     def predict(self, X_batch):
         return self.model.predict_on_batch(X_batch)
     
+    def target_predict(self, X_batch):
+        return self.target.predict_on_batch(X_batch)
+    
 def create_batch(agent, replay_buffer, batch_size, discount_rate):
     obses_t, actions, rewards, obses_tp1, dones = replay_buffer
 
     X_batch = np.vstack(obses_t)
     y_batch = agent.predict(X_batch)
 
-    y_batch[np.arange(batch_size), actions] = rewards + discount_rate * np.max(agent.predict(np.vstack(obses_tp1)), 1) * (1 - dones)
+    y_batch[np.arange(batch_size), actions] = rewards + discount_rate * np.max(agent.target_predict(np.vstack(obses_tp1)), 1) * (1 - dones)
 
     return X_batch, y_batch
 
