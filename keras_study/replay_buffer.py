@@ -1,3 +1,9 @@
+"""
+Rainbowの実装したい
+
+Priorityのクラスを追加(まだできてない)
+"""
+
 import numpy as np
 import random
 from collections import namedtuple
