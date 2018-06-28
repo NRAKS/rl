@@ -73,6 +73,7 @@ class Agent():
     def target_predict(self, X_batch):
         return self.target.predict_on_batch(X_batch)
     
+#DDQN版
 def create_batch(agent, replay_buffer, batch_size, discount_rate):
     obses_t, actions, rewards, obses_tp1, dones = replay_buffer
 
