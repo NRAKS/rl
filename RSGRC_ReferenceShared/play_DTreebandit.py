@@ -11,125 +11,132 @@ import Task
 import agent
 
 
-#設定
-n_act = 4
+# 設定
+NUM_ACTION = 4
+LAYER = 2
+START_STATE = 0
 
-layer = 2
-StartState = 0
-
-SimulationTimes = 1
-EpisodeTimes = 5000
-R = 0.12
-alpha = 0.1
-gamma = 0.9
-Talpha = 0.1
-Tgamma = 0.9
+SIMULATION_TIMES = 1
+EPISODE_TIMES = 5000
+reference = 0.0
+learning_rate = 0.1
+discount_rate = 0.9
+tau_alpha = 0.1
+tau_gamma = 0.9
 Ep = 0.0
-DicEp = 0
-zeta = 0.01
+discountEp = 0
+ZETA = 0.01
 
-n_agent = 3
-task = Task.TreeBandit(layer, SimulationTimes, EpisodeTimes)
-n_state = task.GetNumState()
-GetGoalState = task.GetGoalState()
+NUM_AGENT = 3
+task = Task.DTreeBandit(LAYER, SIMULATION_TIMES, EPISODE_TIMES)
+NUM_STATE = task.get_num_state()
+GOAL_STATE = task.get_goal_state()
 
-player = [agent.GRC(alpha, gamma, R, zeta, Talpha, Tgamma, n_act, n_state, "Q_learning") for _ in range(n_agent)]
+player = [agent.GRC(learning_rate, discount_rate, reference,
+                    ZETA, tau_alpha, tau_gamma, NUM_STATE, NUM_ACTION,
+                    "Q_learning") for _ in range(NUM_AGENT)]
 
 print("バンディットの確率表示")
-task.PrintBandit()
+task.print_bandit()
+
 
 def play_task():
-    
-    sumreward_for_graph = np.zeros((n_agent, EpisodeTimes))
-    for n_simu in range(SimulationTimes):
-        for i in range(n_agent):
+
+    sumreward_for_graph = np.zeros((NUM_AGENT, EPISODE_TIMES))
+    for n_simu in range(SIMULATION_TIMES):
+        for i in range(NUM_AGENT):
             player[i].init_params()
 
-        EG_graph = np.zeros((n_agent, EpisodeTimes))
-        RG_graph = np.zeros((n_agent, EpisodeTimes))
+        EG_graph = np.zeros((NUM_AGENT, EPISODE_TIMES))
+        RG_graph = np.zeros((NUM_AGENT, EPISODE_TIMES))
 
         print("Simu:{}".format(n_simu))
-        for n_epi in range(EpisodeTimes):
-            
-            sumreward = np.zeros(n_agent)
+        for n_epi in range(EPISODE_TIMES):
+
+            sum_reward = np.zeros(NUM_AGENT)
 
             for n in range(len(player)):
-                current_state = StartState
+                current_state = START_STATE
                 step = 0
+
                 while True:
                     current_action = player[n].get_serect_action(current_state)
 
-                    task.EvaluateNextState(current_state, current_action)
+                    task.evaluate_next_state(current_state, current_action)
 
-                    next_state = task.GetNextState()
+                    next_state = task.get_next_state()
 
-                    reward = task.EvaluateReward(current_state, current_action)
-                    
-                    sumreward[n] += reward
-                    player[n].update(current_state, next_state, current_action, reward)
+                    reward = task.evaluate_reward(current_state,
+                                                  current_action)
+
+                    sum_reward[n] += reward
+                    player[n].update(current_state, next_state,
+                                     current_action, reward)
                     step += 1
 
-                    
-                    current_state = task.GetNextState()
-                        
-                    if current_state >= task.GetGoalState():
+                    current_state = task.get_next_state()
+
+                    if current_state >= task.get_goal_state():
                         break
-            
-                sumreward_for_graph[n, n_epi] += sumreward[n]
-                player[n].update_GRC_params(sumreward[n])
+
+                sumreward_for_graph[n, n_epi] += sum_reward[n]
+                player[n].update_GRC_params(sum_reward[n])
                 EG_graph[n, n_epi] = player[n].get_EG()
-                RG_graph[n, n_epi] =player[n].get_reference()
-            R_update = np.average(sumreward)
-            R_debug = np.zeros((n_agent))
-            EG_debug = np.zeros((n_agent))
-            for i in range(n_agent):
-                #player[i].update_RG(R_update)
+                RG_graph[n, n_epi] = player[n].get_reference()
+            R_update = np.average(sum_reward)
+            R_debug = np.zeros((NUM_AGENT))
+            EG_debug = np.zeros((NUM_AGENT))
+            for i in range(NUM_AGENT):
+                # player[i].update_RG(R_update)
                 player[i].update_GRC_reference(R_update)
                 R_debug[i] = player[i].get_reference()
                 EG_debug[i] = player[i].get_EG()
-            if n_epi == EpisodeTimes-1:
+            if n_epi == EPISODE_TIMES - 1:
                 print("Episode : {}".format(n_epi))
-                print("Etmp : {}".format(sumreward))
+                print("Etmp : {}".format(sum_reward))
                 print("R_update : {}".format(R_update))
                 print("EG値 : {}".format(EG_debug))
                 print("RG値 : {}".format(R_debug))
 
     print("シミュレーション完了")
     print("バンディットの確率表示")
-    task.PrintBandit()
+    task.print_bandit()
 
     print("獲得平均報酬")
-    for n in range(n_agent):
-        plt.plot((sumreward_for_graph[n]) / SimulationTimes, label = "RS_{}".format(n))
+    for n in range(NUM_AGENT):
+        plt.plot((sumreward_for_graph[n]) / SIMULATION_TIMES,
+                 label="RS_{}".format(n))
     plt.legend()
     plt.title("reward")
     plt.xlabel("episode")
     plt.ylabel("reward")
-    #plt.savefig("Sumreward_ave_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
+    # plt.savefig("Sumreward_ave_time_development_Simu{}_Epi{}_Agent{}"
+    #             .format(SimulationTimes, EpisodeTimes, n_agent))
     plt.show()
-    #plt.figure()
+    # plt.figure()
 
     print("EGの時間発展")
-    for n in range(n_agent):
-        plt.plot(EG_graph[n], label = "RS_{}".format(n))
+    for n in range(NUM_AGENT):
+        plt.plot(EG_graph[n], label="RS_{}".format(n))
     plt.legend()
     plt.title("EG time development")
     plt.xlabel("episode")
     plt.ylabel("EG")
-    #plt.savefig("EG_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
+    # plt.savefig("EG_time_development_Simu{}_Epi{}_Agent{}"
+    #             .format(SimulationTimes, EpisodeTimes, n_agent))
     plt.show()
-    #plt.figure()
+    # plt.figure()
 
     print("RGの時間発展")
-    for n in range(n_agent):
-        plt.plot(RG_graph[n], label = "RS_{}".format(n))
+    for n in range(NUM_AGENT):
+        plt.plot(RG_graph[n], label="RS_{}".format(n))
     plt.legend()
     plt.title("RG time development")
     plt.xlabel("episode")
     plt.ylabel("RG")
-    #plt.savefig("RG_time_development_Simu{}_Epi{}_Agent{}".format(SimulationTimes, EpisodeTimes, n_agent))
+    # plt.savefig("RG_time_development_Simu{}_Epi{}_Agent{}"
+    #             .format(SimulationTimes, EpisodeTimes, n_agent))
     plt.show()
-    #plt.figure()
+    # plt.figure()
 
 play_task()
-
