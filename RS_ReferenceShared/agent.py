@@ -115,6 +115,15 @@ class RS(object):
         self.tau_current = np.zeros((self.num_state, self.num_action))
         self.tau_post = np.zeros((self.num_state, self.num_action))
 
+    def get_Q(self):
+        return self.policy.get_Q()
+
+    def get_reference(self):
+        return self.reference
+
+    def update_reference(self, reference_update):
+        self.reference = reference_update
+
 
 class GRC(RS):
     def __init__(

@@ -5,6 +5,7 @@
     - RS(Risk-Sensitive Satisficing)モデル用ディレクトリ
 2. RS_ReferenceShared
     - RS満足化基準値共有用のディレクトリ(複数エージェント使用)
+    - 要修正
 3. RSGRC_ReferenceShared
     - RS+GRC満足化基準値共有用のディレクトリ(複数エージェント使用)
 4. multi-agent

@@ -13,107 +13,106 @@ import Task
 import Policy
 from SimuManager import SimulationManager
 
-#シミュレーション設定
-SimulationTimes = 1000
-EpisodeTimes = 5000
-#タスク環境設定
-Layer = 5
-task = Task.DTreeBandit(Layer,SimulationTimes, EpisodeTimes)
+# シミュレーション設定
+SIMULATION_TIMES = 1000
+EPISODE_TIMES = 5000
+# タスク環境設定
+LAYER = 5
+task = Task.DTreeBandit(LAYER, SIMULATION_TIMES, EPISODE_TIMES)
 print("バンディット確率表示")
-task.PrintBandit()
-StartState = 0
-GoalState = task.GetGoalState()
-n_Act = 4
-n_state = task.GetNumState()
-#エージェント設定(設定した数字の-1で実行される。)
-N_agent = 6
-R = 0
-#R_simple = 0
-alpha = 0.1
-gamma = 1.0
-Talpha = 0.1
-Tgamma = 0.9
+task.print_bandit()
+START_STATE = 0
+GOAL_STATE = task.get_goal_state()
+NUM_ACTION = 4
+NUM_STATE = task.get_num_state()
+# エージェント設定(設定した数字の-1で実行される。)
+NUM_AGENT = 6
+reference = 0
+# R_simple = 0
+learning_rate = 0.1
+discount_rate = 1.0
+T_alpha = 0.1
+T_gamma = 0.9
 Ep = 1.0
-DicEp = 0.005
+discount_Ep = 0.005
 
-# Agent = SimulationManager(n_agent, Layer, SimulationTimes, EpisodeTimes, task)
-# Agent.addRS(R, n_Act, n_state, alpha, gamma, Talpha, Tgamma, EpisodeTimes, SimulationTimes)
-        
-def SumIdealRewardperEpi(IdealReward, N_Epi):
-    SumRewardperEpi = np.zeros((N_Epi))
-    for i in range(N_Epi):
+
+def sum_ideal_reward_epi(ideal_reward, num_episode):
+    SumRewardperEpi = np.zeros((num_episode))
+    for i in range(num_episode):
         if i >= 1:
-            SumRewardperEpi[i] = IdealReward + SumRewardperEpi[i-1]
+            SumRewardperEpi[i] = ideal_reward + SumRewardperEpi[i-1]
         else:
-            SumRewardperEpi[i] = IdealReward
+            SumRewardperEpi[i] = ideal_reward
     return SumRewardperEpi
 
-def Culculation_Rshare(Q1, Q2):
-    maxQ = np.zeros((n_state))
-    for state in range(n_state):
+
+def culculation_reference_share(Q1, Q2):
+    maxQ = np.zeros((NUM_STATE))
+    for state in range(NUM_STATE):
         maxQ[state] = max(max(Q1[state]), max(Q2[state]))
     return maxQ
 
-def PlayTask():
-    AveRewardlist = np.zeros((N_agent, EpisodeTimes))
-    Regretlist = np.zeros((N_agent, EpisodeTimes))
-    R_sharelist = np.zeros((N_agent, EpisodeTimes))
-    for n_agent in range(1,N_agent):
-        print("Agent num:{}".format(n_agent))
-        Agent = SimulationManager(n_agent, SimulationTimes, EpisodeTimes, task)
-        Agent.addRS(R, n_Act, n_state, alpha, gamma, Talpha, Tgamma, EpisodeTimes, SimulationTimes)
-        IdealReward = task.SeekIdeal()
-        print("最適報酬:{}".format(IdealReward))
-        SumIdealReward = SumIdealRewardperEpi(IdealReward, EpisodeTimes)
-        print("最適報酬和：{}".format(SumIdealReward))
 
-        for n_Simu in range(SimulationTimes):
-            Agent.InitParameter()
-            print("Simu:{}".format(n_Simu))
-            for n_epi in range(EpisodeTimes):
-                #print("Epi:{}".format(n_epi))
-                Agent.play(n_epi)
+def play_task():
+    average_reward_list = np.zeros((NUM_AGENT, EPISODE_TIMES))
+    regret_list = np.zeros((NUM_AGENT, EPISODE_TIMES))
+    reference_share_list = np.zeros((NUM_AGENT, EPISODE_TIMES))
 
-        AveRewardlist[n_agent] = Agent.PlotAverageReward()
-        Regretlist[n_agent] = Agent.PlotRegret(SumIdealReward)
-        R_sharelist[n_agent] = Agent.GetR_share() / SimulationTimes
+    for n_agent in range(1, NUM_AGENT):
+        print("Agent num:{}".format(NUM_AGENT))
+        agent = SimulationManager(NUM_AGENT, SIMULATION_TIMES,
+                                  EPISODE_TIMES, task)
+        agent.addRS(reference, NUM_ACTION, NUM_STATE, learning_rate,
+                    discount_rate, T_alpha, T_gamma, EPISODE_TIMES,
+                    SIMULATION_TIMES)
 
-    with open(f"R_Sharelist_{Layer}L_{SimulationTimes}S_{EpisodeTimes}epi.pkl", mode="wb") as f:
-        pkl.dump(R_sharelist, f)
+        ideal_reward = task.seek_ideal()
+        print("最適報酬:{}".format(ideal_reward))
+        sum_ideal_reward = sum_ideal_reward_epi(ideal_reward, EPISODE_TIMES)
+        print("最適報酬和：{}".format(sum_ideal_reward))
+
+        for n_simu in range(SIMULATION_TIMES):
+            agent.InitParameter()
+            print("Simu:{}".format(n_simu))
+            for n_epi in range(EPISODE_TIMES):
+                # print("Epi:{}".format(n_epi))
+                agent.play(n_epi)
+
+        average_reward_list[n_agent] = agent.PlotAverageReward()
+        regret_list[n_agent] = agent.PlotRegret(sum_ideal_reward)
+        reference_share_list[n_agent] = agent.GetR_share() / SIMULATION_TIMES
+
+    with open(f"R_Sharelist_{LAYER}L_{SIMULATION_TIMES}S_{EPISODE_TIMES}epi.pkl",
+              mode="wb") as f:
+        pkl.dump(reference_share_list, f)
 
     print("平均報酬獲得の結果表示")
-    Ideal = np.full(EpisodeTimes, IdealReward)
-    for n in range(1,N_agent):
-        plt.plot(AveRewardlist[n], label="Agent num:{}" .format(n))
-    plt.plot(Ideal, label = "Optimum")
+    Ideal = np.full(EPISODE_TIMES, ideal_reward)
+    for n in range(1, NUM_AGENT):
+        plt.plot(average_reward_list[n], label="Agent num:{}" .format(n))
+    plt.plot(Ideal, label="Optimum")
     plt.legend()
-    #plt.title("output")
+    # plt.title("output")
     plt.xlabel("Episode")
     plt.ylabel("Reward")
-    plt.savefig("TreeBandit_RewardAve_{}L{}s{}e.png".format(Layer,SimulationTimes, EpisodeTimes))
-    #plt.show()
+    plt.savefig("TreeBandit_RewardAve_{}L{}s{}e.png"
+                .format(LAYER, SIMULATION_TIMES, EPISODE_TIMES))
+    # plt.show()
     plt.figure()
 
     print("regret表示")
-    for n in range(1,N_agent):
-        #print("エージェント数:{}のグラフ出力".format(n))
-        plt.plot(Regretlist[n], label="Agent num:{}" .format(n))
+    for n in range(1, NUM_AGENT):
+        # print("エージェント数:{}のグラフ出力".format(n))
+        plt.plot(regret_list[n], label="Agent num:{}" .format(n))
     plt.legend()
-    #plt.title("regret output")
+    # plt.title("regret output")
     plt.xlabel("Episode")
     plt.ylabel("regret")
-    plt.savefig("TreeBandit_regret_{}L{}s{}e.png".format(Layer,SimulationTimes, EpisodeTimes))
+    plt.savefig("TreeBandit_regret_{}L{}s{}e.png"
+                .format(LAYER, SIMULATION_TIMES, EPISODE_TIMES))
     plt.figure()
-    #plt.show()
+    # plt.show()
 
-    # print("Rの推移表示")
-    # for n in range(1, N_agent):
-    #     plt.plot(R_sharelist[n], label = "Agent num:{}".format(n))
-    # plt.legend()
-    # plt.xlabel("Episode")
-    # plt.ylabel("Reference")
-    # plt.savefig("TreeBandit_Rtrans_{}L{}s{}e.png".format(Layer,SimulationTimes, EpisodeTimes))
-    # plt.figure()
-    
 
-PlayTask()
+play_task()

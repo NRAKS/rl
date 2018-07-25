@@ -1,10 +1,11 @@
-#シミュレーション関連の機能まとめ
+# シミュレーション関連の機能まとめ
 
 import Policy
 from Task import DTreeBandit
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+
 
 class SimulationManager():
     def __init__(self, n_agent, simulationtimes, episodetimes, task):
@@ -16,24 +17,29 @@ class SimulationManager():
         self.R_share_recode = np.zeros((episodetimes))
         self.RSflag = 0
 
-    #RSエージェントの追加(list管理)
-    def addRS(self, R, N_act, N_state, Alpha, Gamma, TAlpha, TGamma, N_Epi, N_Simu):
-        self.AgentList = [Policy.RS(R, N_act, N_state, Alpha, Gamma, TAlpha, TGamma, N_Epi, N_Simu) for _ in range(self.N)]
+    # RSエージェントの追加(list管理)
+    def addRS(self, R, N_act, N_state, Alpha, 
+              Gamma, TAlpha, TGamma, N_Epi, N_Simu):
+        self.AgentList = [Policy.RS(R, N_act, N_state, Alpha, Gamma, TAlpha,
+                          TGamma, N_Epi, N_Simu) for _ in range(self.N)]
         self.RSflag = 1
 
-    #Qエージェントの追加(list管理)
-    def addQagent(self, alpha, gamma, n_act, n_state, n_epi, n_simu, Ep, DicEp):
-        self.AgentList = [Policy.Agent(alpha, gamma, n_act, n_state, n_epi, n_simu, Ep, DicEp) for _ in range(self.N)]
+    # Qエージェントの追加(list管理)
+    def addQagent(self, alpha, gamma, n_act,
+                  n_state, n_epi, n_simu, Ep, DicEp):
+        self.AgentList = [Policy.Agent(alpha, gamma, n_act, n_state, n_epi,
+                          n_simu, Ep, DicEp) for _ in range(self.N)]
 
     def GetAgent(self):
         return self.AgentList
 
     def CulculationRshare(self):
-        maxQ = np.zeros((self.task.GetNumState()))
-        Qlist = np.array([self.AgentList[n].GetQ() for n in range(len(self.AgentList))])
-        #print("{}".format(Qlist))
-        maxQ = Qlist.max(axis = 2).max(axis = 0)
-        #print("{}".format(maxQ))
+        maxQ = np.zeros((self.task.get_num_state()))
+        Qlist = np.array([self.AgentList[n].GetQ() 
+                          for n in range(len(self.AgentList))])
+        # print("{}".format(Qlist))
+        maxQ = Qlist.max(axis=2).max(axis=0)
+        # print("{}".format(maxQ))
         # for state in range(self.task.GetNumState()):
         #     for n in range(len(self.AgentList)):
         # for state in range(self.task.GetNumState()):
@@ -46,20 +52,24 @@ class SimulationManager():
 
     def play(self, n_epi):
         for n in range(len(self.AgentList)):
-            self.AgentList[n].InitState(self.task.GetStartstate())
+            self.AgentList[n].InitState(self.task.get_start_state())
         for n in range(len(self.AgentList)):
             while True:
-                #print("{}".format(n))
+                # print("{}".format(n))
                 CurrentState = self.AgentList[n].GetCurrentstate()
                 self.AgentList[n].SerectAction(CurrentState)
-                self.task.EvaluateNextState(CurrentState,self.AgentList[n].GetSerectAction())
-                NextState = self.task.GetNextState()
-                #print("Next:{}".format(NextStateUCB1))
-                Reward = self.task.EvaluateReward(CurrentState,self.AgentList[n].GetSerectAction())
-                #print("reward:{}".format(Reward))
-                self.AgentList[n].Update(self.AgentList[n].GetSerectAction(), CurrentState, NextState, Reward, n_epi)
+                self.task.evaluate_next_state(CurrentState,
+                                            self.AgentList[n].GetSerectAction())
+                NextState = self.task.get_next_state()
+                # print("Next:{}".format(NextStateUCB1))
+                Reward = self.task.evaluate_reward(CurrentState, 
+                                                  self.AgentList[n].GetSerectAction())
+                # print("reward:{}".format(Reward))
+                self.AgentList[n].Update(self.AgentList[n].GetSerectAction(),
+                                         CurrentState, NextState, 
+                                         Reward, n_epi)
                 self.AgentList[n].Updatestate(NextState)
-                if NextState >= self.task.GetGoalState():
+                if NextState >= self.task.get_goal_state():
                     break
         
         if self.RSflag == 1:
@@ -77,7 +87,7 @@ class SimulationManager():
         SumReward = np.zeros((self.episodetimes))
 
         for n in range(len(self.AgentList)):
-            #plt.plot(self.AgentList[n].culculationAve(),label = "RS{}".format(n))
+            # plt.plot(self.AgentList[n].culculationAve(),label = "RS{}".format(n))
             SumReward += self.AgentList[n].culculationAve()
         
         Ave = SumReward / len(self.AgentList)
@@ -104,10 +114,10 @@ class SimulationManager():
     
         sumregret = np.zeros((self.episodetimes))
         for n in range(len(self.AgentList)):
-            #print("sumrewardideal:{}".format(SumRewardIdeal))
-            #print("Agent{} sumreward:{}".format(n, self.AgentList[n].GetSumReward()))
+            # print("sumrewardideal:{}".format(SumRewardIdeal))
+            # print("Agent{} sumreward:{}".format(n, self.AgentList[n].GetSumReward()))
             regret = SumRewardIdeal - self.AgentList[n].GetSumReward()
-            #plt.plot(regret, label="RS{}".format(n))
+            # plt.plot(regret, label="RS{}".format(n))
             sumregret += regret
         RegretAve = sumregret / len(self.AgentList)
         return RegretAve

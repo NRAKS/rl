@@ -46,7 +46,6 @@ class Agent():
         self.model = Model(inputs = input_dim, outputs = net)
         self.model.compile('rmsprop', 'mse')
 
-
     def update_target(self):
         config = self.model.get_config()
         self.target = Model.from_config(config)
@@ -69,14 +68,18 @@ class Agent():
     
     def target_predict(self, X_batch):
         return self.target.predict_on_batch(X_batch)
-    
+
+
 def create_batch(agent, replay_buffer, batch_size, discount_rate):
     obses_t, actions, rewards, obses_tp1, dones = replay_buffer
 
     X_batch = np.vstack(obses_t)
     y_batch = agent.predict(X_batch)
 
-    y_batch[np.arange(batch_size), actions] = rewards + discount_rate * np.max(agent.target_predict(np.vstack(obses_tp1)), 1) * (1 - dones)
+    y_batch[np.arange(batch_size), actions] = (rewards
+                                               + discount_rate
+                                               * np.max(agent.target_predict(np.vstack(obses_tp1)), 1)
+                                               * (1 - dones))
 
     return X_batch, y_batch
 
@@ -89,7 +92,7 @@ if __name__ == '__main__':
     replay_buffer = ReplayBuffer(50000)
     exploration = LinerSchedule(schedule_timesteps = 10000, initial_p= 1.0, final_p = 0.02)
 
-    #初期化
+    # 初期化
     discount_rate = 0.99
     episode_rewards = [0.0]
     obs = env.reset()
@@ -109,13 +112,13 @@ if __name__ == '__main__':
             print("t:{}, episode_rewards:{}, eps:{}".format(t, episode_rewards[-1], exploration.value(t)))
             episode_rewards.append(0)
 
-        is_solved = t > 100 and np.mean(episode_rewards[-51:-1]) >= 180
+        is_solved = t > 100 and np.mean(episode_rewards[-51:-1]) >= 170
 
         if is_solved:
             env.render()
         else:
             if t > 1000:
-                #obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(32)
+                # obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(32)
                 X_batch, y_batch = create_batch(agent, replay_buffer.sample(32), 32, discount_rate)
                 agent.train(X_batch, y_batch)
             if t % 1000 == 0:

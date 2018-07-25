@@ -41,10 +41,10 @@ class ReplayBuffer(object):
         for i in idxes:
             data = self._storage[i]
             obs_t, action, reward, obs_tp1, done = data
-            obses_t.append(np.array(obs_t, copy = False))
-            actions.append(np.array(action, copy = False))
+            obses_t.append(np.array(obs_t, copy=False))
+            actions.append(np.array(action, copy=False))
             rewards.append(reward)
-            obses_tp1.append(np.array(obs_tp1, copy = False))
+            obses_tp1.append(np.array(obs_tp1, copy=False))
             dones.append(done)
         return (np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones))
 
@@ -53,24 +53,25 @@ class ReplayBuffer(object):
         return self._encode_sample(idxes)
 
 
-#セグメントツリー(優先順位づけのため)
+# セグメントツリー(優先順位づけのため)
 class SegmentTree():
     def __init__(self, size):
         self.index = 0
         self.size = size
         self.full = False
-        self.sum_tree = [0] * (2 * size -1)
+        self.sum_tree = [0] * (2 * size - 1)
         self.data = [None]
         self.max = 1
-    #インデックスツリーにvalueを伝える
+
+    # インデックスツリーにvalueを伝える
     def _propagate(self, index, value):
-        parent = (index -1) // 2
+        parent = (index - 1) // 2
         left, right = 2 * parent + 1, 2 * parent + 2
         self.sum_tree[parent] = self.sum_tree[left] + self.sum_tree[right]
         if parent != 0:
             self._propagate(parent, value)
 
-    #インデックスツリーにvalueを更新する
+    # インデックスツリーにvalueを更新する
     def update(self, index, value):
         self.sum_tree[index] = value
         self._propagate(index, value)
@@ -78,12 +79,12 @@ class SegmentTree():
 
     def append(self, data, value):
         self.data[self.index] = data
-        self.update(self.index + self.size -1, value)
+        self.update(self.index + self.size - 1, value)
         self.index = (self.index + 1) % self.size
         self.full = self.full or self.index == 0
         self.max = max(value, self.max)
 
-    #全体木からvalueの位置を探す
+    # 全体木からvalueの位置を探す
     def _retrieve(self, index, value):
         left, right = 2 * index + 1, 2 * index + 2
         if left >= len(self.sum_tree):
@@ -93,7 +94,7 @@ class SegmentTree():
         else:
             return self._retrieve(right, value - self.sum_tree[left])
 
-    #valueをツリーから探し、value、dataのインデックス、ツリーのインデックスを返す
+    # valueをツリーから探し、value、dataのインデックス、ツリーのインデックスを返す
     def find(self, value):
         index = self._retrieve(0, value)
         data_index = index - self.size + 1
@@ -105,8 +106,8 @@ class SegmentTree():
     def total(self):
         return self.sum_tree[0]
 
-    
 
+# Prioritized replayの実装(未完成)
 class ReplayMemory_Prioritized():
     def __init__(self, size, priority_weight):
         self._storage = []
@@ -115,8 +116,8 @@ class ReplayMemory_Prioritized():
         self._priority_weight = [1]
         self._priority_weight_change = []
         self._transitions = SegmentTree(size)
-        self._history = 1   #連続状態を処理する数
-        self._multi_step = 1 #マルチステップ処理の数
+        self._history = 1   # 連続状態を処理する数
+        self._multi_step = 1   # マルチステップ処理の数
 
     def __len__(self):
         return len(self._storage)
@@ -129,21 +130,19 @@ class ReplayMemory_Prioritized():
             self._storage.append(data)
         else:
             self._storage[self._next_idx] = data
-        self._next_idx = (self._next_idx + 1)  % self._maxisize
+        self._next_idx = (self._next_idx + 1) % self._maxisize
     
-
-
-    #インデックス番号から各情報(行動、観測情報などを渡す)
+    # インデックス番号から各情報(行動、観測情報などを渡す)
     def _encode_sample(self, idxes):
         obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
 
         for i in idxes:
             data = self._storage[i]
             obs_t, action, reward, obs_tp1, done = data
-            obses_t.append(np.array(obs_t, copy = False))
-            actions.append(np.array(action, copy = False))
+            obses_t.append(np.array(obs_t, copy=False))
+            actions.append(np.array(action, copy=False))
             rewards.append(reward)
-            obses_tp1.append(np.array(obs_tp1, copy = False))
+            obses_tp1.append(np.array(obs_tp1, copy=False))
             dones.append(done)
         return (np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones))
 
