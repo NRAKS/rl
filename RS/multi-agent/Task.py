@@ -92,29 +92,6 @@ class DTreeBandit(Environment):
     def print_bandit(self):
         print("{}".format(self.bandit))
 
-    # 生成されたツリーバンディットの最適報酬を求める
-    def seek_ideal(self):
-        n_Act = 4
-        n_state = self.get_num_state()
-        EpisodeTimes = self.n_epi
-        SimulationTimes = self.n_simu
-        Agent = Policy.MinTrial(n_Act, n_state, EpisodeTimes, SimulationTimes)
-        for _ in range(4**(self.layer+1)):
-            CurrentState = self.start_state
-            while True:
-                Agent.SerectAction(CurrentState)
-                self.evaluate_next_state(CurrentState, Agent.GetSerectAction())
-                NextState = self.get_next_state()
-                Reward = self.evaluate_reward(CurrentState,
-                                              Agent.GetSerectAction())
-                Agent.Update(Reward)
-                CurrentState = NextState
-                if CurrentState >= self.get_goal_state():
-                    Agent.InitSumReward()
-                    break
-
-        return Agent.GetMaxReward()
-
 
 # 確率論的ツリーバンディット
 class PTreeBandit(DTreeBandit):
@@ -131,10 +108,10 @@ class PTreeBandit(DTreeBandit):
 
 class EasyMaze(Environment):
     # 簡単なステージを作る
-    def __init__(self, Row, Col, start, goal):
+    def __init__(self, row, col, start, goal):
         super().__init__()
-        self.row = Row
-        self.col = Col
+        self.row = row
+        self.col = col
         self.start = start
         self.goal = goal
 
@@ -156,6 +133,7 @@ class EasyMaze(Environment):
         LOWER = 1
         LEFT = 2
         RIGHT = 3
+        STOP = 4
 
         row = self.state_to_row(state)
         col = self.state_to_col(state)
@@ -172,6 +150,8 @@ class EasyMaze(Environment):
         elif action == LEFT:
             if (col) > 0:
                 col -= 1
+        elif action == STOP:
+            pass
 
         self.next_state = self.coord_to_state(row, col)
 
@@ -183,11 +163,12 @@ class EasyMaze(Environment):
             return 0
 
 
+# 崖歩きタスク
 class CriffWorld(EasyMaze):
-    def __init__(self, Row, Col, start, goal):
+    def __init__(self, row, col, start, goal):
         super().__init__()
-        self.row = Row
-        self.col = Col
+        self.row = row
+        self.col = col
         self.start = start
         self.goal = goal
 
@@ -202,3 +183,60 @@ class CriffWorld(EasyMaze):
 
         else:
             return 0
+
+
+# 収穫タスク
+# 特定のマスに居続けて収穫を得て、拠点に持ち帰る
+class HarvestWorld(EasyMaze):
+        def __init__(self, row, col, start, harvest_state1=None, harvest_state2=None):
+            super().__init__(row, col, start, goal=None)
+            self.row = row
+            self.col = col
+            self.start = start
+            self.harvest_state1 = harvest_state1
+            self.harvest_state2 = harvest_state2
+
+        def evaluate_reward(self, state):
+            if state == self.harvest_state1:
+                return 10
+            elif state == self.harvest_state2:
+                return 5
+            else:
+                return 0
+
+
+# モンティ・ホール問題
+# 扉を選択→不正解の扉を見せられてから選択する扉を変更するかを選択
+class MontyHall(Environment):
+    def __init__(self, num_doors=3):
+        super().__init__()
+        self.num_doors = num_doors
+        self.correct_answer = random.choice([0, 1, 2])
+    
+    # ドア選択を受け取って不正解の情報を見せる
+    def evaluate_next_state(self, action):
+        # 選んだドアを記録
+        self.serect_door = action
+        # ヤギ(不正解)のドアをオープンする
+        goat = random.choice(list(set(self.num_doors) 
+                             - set([self.correct_answer, action])))
+        # ヤギのドア番号を返す
+        return goat
+
+    # ドアの変更選択した後の報酬処理
+    def evaluate_reward(self, action):
+        """
+        action == 0 : そのまま
+        action == 1 : 変更
+        """
+        # ドアスイッチの変更記録
+        swich = action
+        if action == 1:
+            # 選んだドアの上書き
+            self.serect_door = random.choice(list(set(self.num_doors) 
+                                             - set([self.serect_door, self.goat])))
+        
+        if self.correct_answer == self.serect_door:
+            reward = 1
+        
+        return [reward, swich]
