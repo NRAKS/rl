@@ -10,6 +10,7 @@ python3
 import agent
 import random
 import numpy as np
+import copy
 
 
 class Environment(object):
@@ -19,6 +20,9 @@ class Environment(object):
         self.reward = 0
         self.num_state = 0
         self.start_state = 0
+
+    def get_current_state(self):
+        return self.current_state 
 
     def get_next_state(self):
         return self.next_state
@@ -195,6 +199,12 @@ class HarvestWorld(EasyMaze):
             self.start = start
             self.harvest_state1 = harvest_state1
             self.harvest_state2 = harvest_state2
+
+        def evaluate_next_state(self, action, current_state, n_agent):
+            super().evaluate_next_state(action, current_state[n_agent])
+            next_state = copy.deepcopy(current_state)
+            next_state[n_agent] = self.next_state
+            self.next_state = next_state
 
         def evaluate_reward(self, state):
             if state == self.harvest_state1:

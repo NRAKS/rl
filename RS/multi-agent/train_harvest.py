@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import Task
 import agent
+import sys
 
 # 設定
 NUM_ACTION = 5
@@ -23,7 +24,7 @@ REWARD_STATE1 = (BOARD_COL * BOARD_ROW) - 1
 REWARD_STATE2 = (BOARD_COL * BOARD_ROW) - 6
 
 SIMULAITON_TIMES = 1
-EPISODE_TIMES = 500
+EPISODE_TIMES = 5000
 reference = 0
 learning_rate = 0.1
 discount_rate = 0.9
@@ -36,7 +37,7 @@ ZETA = 0.01
 
 NUM_AGENT = 3
 
-reference_g = 700 * NUM_AGENT
+reference_g = 400 * NUM_AGENT
 
 
 
@@ -55,63 +56,68 @@ def play_task():
 
         for i in range(len(player)):
             player[i].init_params()
+            player_eps[i].init_params()
         
-        print("Simu:{}".format(n_simu))
+        # print("Simu:{}".format(n_simu))
+        sys.stdout.write("\r%s/%s" % (str(n_simu), str(SIMULAITON_TIMES-1)))
 
         # GRCのトレーニング
         for n_epi in range(EPISODE_TIMES):
+            # print("n_epi:{}".format(n_epi))
+            sys.stdout.write("\r%s/%s" % (str(n_epi), str(EPISODE_TIMES-1)))
             sum_reward = np.zeros(len(player))
-            for n_agent in range(len(player)):
-                current_state = START_STATE
-                step = 0
-                while True:
-                    current_action = player[n_agent].get_serect_action(current_state)
-                    env.evaluate_next_state(current_action, current_state)
+            current_state = np.full(NUM_AGENT, START_STATE)
+            step = 0
+            while True:
+                for n_agent in range(NUM_AGENT):
+                    current_action = player[n_agent].get_serect_action(tuple(current_state))
+                    env.evaluate_next_state(current_action, current_state, n_agent)
                     next_state = env.get_next_state()
 
-                    reward = env.evaluate_reward(next_state)
+                    reward = env.evaluate_reward(next_state[n_agent])
 
                     sum_reward[n_agent] += reward
-                    player[n_agent].update(current_state, next_state, current_action, reward)
+
+                    player[n_agent].update(tuple(current_state), tuple(next_state), current_action, reward)
 
                     current_state = next_state
 
-                    step += 1
+                step += 1
 
-                    if step == 100:
-                        break
-
-                sumreward_for_graph_GRC[n_agent, n_epi] += sum_reward[n_agent]
+                if step == 100:
+                    break
+            
             for n_agent in range(NUM_AGENT):
+                sumreward_for_graph_GRC[n_agent, n_epi] += sum_reward[n_agent]
                 player[n_agent].update_GRC_params(np.sum(sum_reward))
             # R_update = np.average(sum_reward)
 
         # eps-greedyのトレーニング
-        for n_epi in range(EPISODE_TIMES):
-            sum_reward = np.zeros(len(player_eps))
-            for n_agent in range(len(player_eps)):
-                current_state = START_STATE
-                step = 0
-                while True:
-                    current_action = player_eps[n_agent].get_serect_action(current_state)
-                    env.evaluate_next_state(current_action, current_state)
-                    next_state = env.get_next_state()
+        # for n_epi in range(EPISODE_TIMES):
+        #     sum_reward = np.zeros(len(player_eps))
+        #     current_state = np.full(NUM_AGENT, START_STATE)
+        #     step = 0
+        #     while True:
+        #         for n_agent in rnage(len(player_eps))
+        #             current_action = player_eps[n_agent].get_serect_action(current_state)
+        #             env.evaluate_next_state(current_action, current_state, n_agent)
+        #             next_state = env.get_next_state()
 
-                    reward = env.evaluate_reward(next_state)
+        #             reward = env.evaluate_reward(next_state[n_agent])
 
-                    sum_reward[n_agent] += reward
-                    player_eps[n_agent].update(current_state, next_state, current_action, reward)
+        #             sum_reward[n_agent] += reward
+        #             player_eps[n_agent].update(current_state[n_agent], next_state[n_agent], current_action, reward)
 
-                    current_state = next_state
+        #             current_state = next_state
 
-                    step += 1
+        #             step += 1
 
-                    if step == 100:
-                        break
+        #             if step == 100:
+        #                 break
 
-                player_eps[n_agent].update_eps()
-                print(sum_reward[n_agent])
-                sumreward_for_graph_eps[n_agent, n_epi] += sum_reward[n_agent]
+        #         player_eps[n_agent].update_eps()
+        #         print(sum_reward[n_agent])
+        #         sumreward_for_graph_eps[n_agent, n_epi] += sum_reward[n_agent]
     print("シミュレーション完了")
 
     for n_agent in range(len(player)):

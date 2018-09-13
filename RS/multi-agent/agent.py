@@ -9,6 +9,7 @@ import random
 import numpy as np
 import math
 import sys
+from collections import defaultdict
 
 
 # TD学習アルゴリズム
@@ -19,20 +20,20 @@ class Q_learning(object):
         self.discount_rate = discount_rate
         self.num_state = num_state
         self.num_action = num_action
-        self.Q = np.zeros((num_state, num_action))
+        self.Q = defaultdict(int)
 
     def update_Q(
             self, current_state, next_state,
             current_action, reward, next_action=None):
-        maxQ = max(self.Q[next_state])
+        max_Q = max(self.Q[current_state, x] for x in range(self.num_action))
         TD = (reward
               + self.discount_rate
-              * maxQ
+              * max_Q
               - self.Q[current_state, current_action])
         self.Q[current_state, current_action] += self.learning_rate * TD
 
     def init_params(self):
-        self.Q = np.zeros((self.num_state, self.num_action))
+        self.Q = defaultdict(int)
 
     def get_Q(self):
         return self.Q
@@ -102,14 +103,14 @@ class RS(object):
             self, learning_rate, discount_rate, reference,
             tau_alpha, tau_gamma, num_state, num_action, policy):
         self.reference_init = reference
-        self.reference = np.full(num_state, reference)
+        self.reference = defaultdict(lambda: reference)
         self.tau_alpha = tau_alpha
         self.tau_gamma = tau_gamma
         self.num_action = num_action
         self.num_state = num_state
-        self.tau = np.zeros((num_state, num_action))
-        self.tau_current = np.zeros((num_state, num_action))
-        self.tau_post = np.zeros((num_state, num_action))
+        self.tau = defaultdict(int)
+        self.tau_current = defaultdict(int)
+        self.tau_post = defaultdict(int)
 
         # 方策によってQ学習とsarsaを切り替える
         if policy == "Q_learning":
@@ -137,9 +138,11 @@ class RS(object):
         self.policy.update_Q(current_state, next_state,
                              current_action, reward, next_action)
         # τ値更新準備
-        max_next_state_Q = max(self.policy.get_Q()[next_state])
-        idx = np.where(self.policy.get_Q()[next_state] == max_next_state_Q)
-        action_up = random.choice(idx[0])
+        Q = self.policy.get_Q()
+        idx = defaultdict(int)
+        for n_action in range(self.num_action):
+            idx[n_action] = Q[next_state, n_action]
+        action_up = max(idx, key=idx.get)
         # τ値更新
         self.tau_current[current_state, current_action] += 1
         self.tau_post[current_state, current_action] += (self.tau_alpha
@@ -152,10 +155,10 @@ class RS(object):
 
     def init_params(self):
         self.policy.init_params()
-        self.reference = np.full(self.num_state, self.reference_init)
-        self.tau = np.zeros((self.num_state, self.num_action))
-        self.tau_current = np.zeros((self.num_state, self.num_action))
-        self.tau_post = np.zeros((self.num_state, self.num_action))
+        self.reference = defaultdict(lambda: self.reference_init)
+        self.tau = defaultdict(int)
+        self.tau_current = defaultdict(int)
+        self.tau_post = defaultdict(int)
 
 
 class GRC(RS):
@@ -174,15 +177,18 @@ class GRC(RS):
     def get_serect_action(self, current_state):
         DG = min([self.EG - self.RG, 0])
         Q = self.policy.get_Q()
-        max_Q = max(Q[current_state])
+        max_Q = max(Q[current_state, x] for x in range(self.num_action))
         reference = max_Q - self.zeta * DG
-        rs = {}
-        rs[current_state] = (self.tau[current_state]
-                             * (Q[current_state]
-                             - reference))
-        idx = np.where(rs[current_state] == max(rs[current_state]))
+        rs = defaultdict(int)
+        for n_action in range(self.num_action):
+            rs[current_state, n_action] = (self.tau[current_state, n_action] 
+                                * (Q[current_state, n_action]
+                                - reference))
+        idx = defaultdict(int)
+        for n_action in range(self.num_action):
+            idx[n_action] = rs[current_state, n_action]
 
-        serect_action = random.choice(idx[0])
+        serect_action = max(idx, key=idx.get)
 
         return serect_action
 
