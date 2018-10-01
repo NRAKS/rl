@@ -54,11 +54,65 @@ class Sarsa(Q_learning):
         self.Q[current_state, current_action] += self.learning_rate * TD
 
 
+class Greedy(object):  # greedy方策
+    # 行動価値を受け取って行動番号を返す
+    def serect_action(self, value, current_state):
+        return np.argmax(value[current_state])
+    
+    def init_params(self):
+        pass
+
+    def update_params(self):
+        pass
+
+
+class EpsGreedy(Greedy):
+    def __init__(self, eps):
+        self.eps = eps
+
+    def serect_action(self, value, current_state):
+        if random.random() < self.eps:
+            return random.choice(range(len(value[current_state])))
+
+        else:
+            return np.argmax(value[current_state])
+
+
+class EpsDecGreedy(EpsGreedy):
+    def __init__(self, eps, eps_min, eps_decrease):
+        super().__init__(eps)
+        self.eps_init = eps
+        self.eps_min = eps_min
+        self.eps_decrease = eps_decrease
+
+    def init_params(self):
+        self.eps = self.eps_init
+
+    def update_params(self):
+        self.eps -= self.eps_decrease
+
+
+class softmax(object):
+    def softmax(self, a):
+        c = np.max(a)
+        exp_a = np.exp(a - c)
+        sum_exp_a = np.sum(exp_a)
+        y = exp_a / sum_exp_a
+
+        return y
+
+    def serect_action(self, value, current_state):
+        value_p = self.softmax(value[current_state])[0]
+        action = np.random.choice(len(value_p), 1, value_p.tolist())[0]
+        return action
+
+
+
 # RS(risk-sensitive satisficing)モデル
 class RS(object):
     def __init__(
             self, learning_rate, discount_rate, reference,
-            tau_alpha, tau_gamma, num_state, num_action, policy):
+            tau_alpha, tau_gamma, num_state, num_action, value_func):
         self.reference_init = reference
         self.reference = np.full(num_state, reference)
         self.tau_alpha = tau_alpha
@@ -70,16 +124,16 @@ class RS(object):
         self.tau_post = np.zeros((num_state, num_action))
 
         # 方策によってQ学習とsarsaを切り替える
-        if policy == "Q_learning":
+        if value_func == "Q_learning":
             self.policy = Q_learning(learning_rate, discount_rate,
                                      num_state, num_action)
-        elif policy == "sarsa":
+        elif value_func == "sarsa":
             self.policy = Sarsa(learning_rate, discount_rate,
                                 num_state, num_action)
         else:
             sys.exit("Error")
 
-    def get_serect_action(self, current_state): 
+    def serect_action(self, current_state): 
         Q = self.policy.get_Q()
         rs = (self.tau[current_state]
               * (Q[current_state]
@@ -115,6 +169,8 @@ class RS(object):
         self.tau_current = np.zeros((self.num_state, self.num_action))
         self.tau_post = np.zeros((self.num_state, self.num_action))
 
+    def get_reference(self):
+        return self.reference
 
 class GRC(RS):
     def __init__(
@@ -129,7 +185,7 @@ class GRC(RS):
         self.GRC_gamma = discount_rate
         self.NG_R = 0
 
-    def get_serect_action(self, current_state):
+    def serect_action(self, current_state):
         DG = min([self.EG - self.RG, 0])
         Q = self.policy.get_Q()
         max_Q = max(Q[current_state])

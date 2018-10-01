@@ -9,7 +9,6 @@ import random
 import numpy as np
 import math
 import sys
-from collections import defaultdict
 
 
 # TD学習アルゴリズム
@@ -20,33 +19,20 @@ class Q_learning(object):
         self.discount_rate = discount_rate
         self.num_state = num_state
         self.num_action = num_action
-        self.Q = defaultdict(int)
+        self.Q = np.zeros((num_state, num_action))
 
     def update_Q(
             self, current_state, next_state,
             current_action, reward, next_action=None):
-        idx = defaultdict(int)
-        for n_action in range(self.num_action):
-            idx[n_action] = self.Q[next_state, n_action]
-        
-        a = max(idx)
-        max_Q = idx[a]
-        print("state_curr:{}" .format(current_state))
-        print("state_next:{}" .format(next_state))
-        print("reward:{}" .format(reward))
-        print("maxQ:{}" .format(max_Q))
-
+        maxQ = max(self.Q[next_state])
         TD = (reward
               + self.discount_rate
-              * max_Q
+              * maxQ
               - self.Q[current_state, current_action])
-
-        print("TD:{}" .format(TD))
         self.Q[current_state, current_action] += self.learning_rate * TD
-        print("Q[state, act]:{}" .format(self.Q[current_state, current_action]))
 
     def init_params(self):
-        self.Q = defaultdict(int)
+        self.Q = np.zeros((self.num_state, self.num_action))
 
     def get_Q(self):
         return self.Q
@@ -68,76 +54,87 @@ class Sarsa(Q_learning):
         self.Q[current_state, current_action] += self.learning_rate * TD
 
 
-# ε-greedy方策
-class eps_greedy(object):
-    def __init__(self, eps_init, eps_discount, eps_min, learning_rate, discount_rate, num_state, num_action, policy):
-        self.eps = eps_init
-        self.eps_init = eps_init
-        self.eps_discount = eps_discount
-        self.eps_min = eps_min
+class Greedy(object):  # greedy方策
+    # 行動価値を受け取って行動番号を返す
+    def serect_action(self, value, current_state):
+        return np.argmax(value[current_state])
+    
+    def init_params(self):
+        pass
 
-        # 方策によってQ学習とsarsaを切り替える
-        if policy == "Q_learning":
-            self.policy = Q_learning(learning_rate, discount_rate,
-                                     num_state, num_action)
-        elif policy == "sarsa":
-            self.policy = Sarsa(learning_rate, discount_rate,
-                                num_state, num_action)
-        else:
-            sys.exit("Error")
+    def update_params(self):
+        pass
 
-    def get_serect_action(self, current_state):
-        Q = self.policy.get_Q()
+
+class EpsGreedy(Greedy):
+    def __init__(self, eps):
+        self.eps = eps
+
+    def serect_action(self, value, current_state):
         if random.random() < self.eps:
-            action = random.randint(0, len(Q[current_state])-1)
+            return random.choice(range(len(value[current_state])))
 
         else:
-            action = np.argmax(Q[current_state])
+            return np.argmax(value[current_state])
 
-        return action
 
-    def update(self, current_state, next_state,
-            current_action, reward, next_action=None):
-        self.policy.update_Q(current_state, next_state,
-                             current_action, reward, next_action)
-
-    def update_eps(self):
-        if self.eps > self.eps_min:
-            self.eps -= self.eps_discount
+class EpsDecGreedy(EpsGreedy):
+    def __init__(self, eps, eps_min, eps_decrease):
+        super().__init__(eps)
+        self.eps_init = eps
+        self.eps_min = eps_min
+        self.eps_decrease = eps_decrease
 
     def init_params(self):
-        self.policy.init_params()
         self.eps = self.eps_init
+
+    def update_params(self):
+        self.eps -= self.eps_decrease
+
+
+class softmax(object):
+    def softmax(self, a):
+        c = np.max(a)
+        exp_a = np.exp(a - c)
+        sum_exp_a = np.sum(exp_a)
+        y = exp_a / sum_exp_a
+
+        return y
+
+    def serect_action(self, value, current_state):
+        value_p = self.softmax(value[current_state])[0]
+        action = np.random.choice(len(value_p), 1, value_p.tolist())[0]
+        return action
+
 
 
 # RS(risk-sensitive satisficing)モデル
 class RS(object):
     def __init__(
             self, learning_rate, discount_rate, reference,
-            tau_alpha, tau_gamma, num_state, num_action, policy):
+            tau_alpha, tau_gamma, num_state, num_action, value_func):
         self.reference_init = reference
-        self.reference = defaultdict(lambda: reference)
+        self.reference = np.full(num_state, reference)
         self.tau_alpha = tau_alpha
         self.tau_gamma = tau_gamma
         self.num_action = num_action
         self.num_state = num_state
-        self.tau = defaultdict(int)
-        self.tau_current = defaultdict(int)
-        self.tau_post = defaultdict(int)
+        self.tau = np.zeros((num_state, num_action))
+        self.tau_current = np.zeros((num_state, num_action))
+        self.tau_post = np.zeros((num_state, num_action))
 
         # 方策によってQ学習とsarsaを切り替える
-        if policy == "Q_learning":
+        if value_func == "Q_learning":
             self.policy = Q_learning(learning_rate, discount_rate,
                                      num_state, num_action)
-        elif policy == "sarsa":
+        elif value_func == "sarsa":
             self.policy = Sarsa(learning_rate, discount_rate,
                                 num_state, num_action)
         else:
             sys.exit("Error")
 
-    def get_serect_action(self, current_state): 
+    def serect_action(self, current_state): 
         Q = self.policy.get_Q()
-        print("Q:{}" .format(Q))
         rs = (self.tau[current_state]
               * (Q[current_state]
               - self.reference[current_state]))
@@ -152,11 +149,9 @@ class RS(object):
         self.policy.update_Q(current_state, next_state,
                              current_action, reward, next_action)
         # τ値更新準備
-        Q = self.policy.get_Q()
-        idx = defaultdict(int)
-        for n_action in range(self.num_action):
-            idx[n_action] = Q[next_state, n_action]
-        action_up = max(idx, key=idx.get)
+        max_next_state_Q = max(self.policy.get_Q()[next_state])
+        idx = np.where(self.policy.get_Q()[next_state] == max_next_state_Q)
+        action_up = random.choice(idx[0])
         # τ値更新
         self.tau_current[current_state, current_action] += 1
         self.tau_post[current_state, current_action] += (self.tau_alpha
@@ -169,11 +164,13 @@ class RS(object):
 
     def init_params(self):
         self.policy.init_params()
-        self.reference = defaultdict(lambda: self.reference_init)
-        self.tau = defaultdict(int)
-        self.tau_current = defaultdict(int)
-        self.tau_post = defaultdict(int)
+        self.reference = np.full(self.num_state, self.reference_init)
+        self.tau = np.zeros((self.num_state, self.num_action))
+        self.tau_current = np.zeros((self.num_state, self.num_action))
+        self.tau_post = np.zeros((self.num_state, self.num_action))
 
+    def get_reference(self):
+        return self.reference
 
 class GRC(RS):
     def __init__(
@@ -188,22 +185,18 @@ class GRC(RS):
         self.GRC_gamma = discount_rate
         self.NG_R = 0
 
-    def get_serect_action(self, current_state):
+    def serect_action(self, current_state):
         DG = min([self.EG - self.RG, 0])
         Q = self.policy.get_Q()
-        # print("Q:{}" .format(Q))
-        max_Q = max(Q[current_state, x] for x in range(self.num_action))
+        max_Q = max(Q[current_state])
         reference = max_Q - self.zeta * DG
-        rs = defaultdict(int)
-        for n_action in range(self.num_action):
-            rs[current_state, n_action] = (self.tau[current_state, n_action] 
-                                * (Q[current_state, n_action]
-                                - reference))
-        idx = defaultdict(int)
-        for n_action in range(self.num_action):
-            idx[n_action] = rs[current_state, n_action]
+        rs = {}
+        rs[current_state] = (self.tau[current_state]
+                             * (Q[current_state]
+                             - reference))
+        idx = np.where(rs[current_state] == max(rs[current_state]))
 
-        serect_action = max(idx, key=idx.get)
+        serect_action = random.choice(idx[0])
 
         return serect_action
 
@@ -240,3 +233,47 @@ class GRC(RS):
 
     def get_EG(self):
         return self.EG
+
+
+# エージェントクラス
+class Agent():
+    def __init__(self, value_func="Q_learning", policy="greedy", learning_rate=0.1, discount_rate=0.9, eps=None, eps_min=None, eps_decrease=None, n_state=None, n_action=None):
+        # 価値更新方法の選択
+        if value_func == "Q_learning":
+            self.value_func = Q_learning(num_state=n_state, num_action=n_action)
+        
+        else:
+            print("error:価値関数候補が見つかりませんでした")
+            sys.exit()
+
+        # 方策の選択
+        if policy == "greedy":
+            self.policy = Greedy()
+        
+        elif policy == "eps_greedy":
+            self.policy = EpsGreedy(eps=eps)
+
+        elif policy == "eps_dec_greedy":
+            self.policy = EpsDecGreedy(eps=eps, eps_min=eps_min, eps_decrease=eps_decrease)
+
+        else:
+            print("error:方策候補が見つかりませんでした")
+            sys.exit()
+
+    # パラメータ更新(基本呼び出し)
+    def update(self, current_state, current_action, reward, next_state):
+        self.value_func.update_Q(current_state, current_action, reward, next_state)
+        self.policy.update_params()
+
+    # 行動選択(基本呼び出し)
+    def serect_action(self, current_state):
+        return self.policy.serect_action(self.value_func.get_Q(), current_state)
+
+    # 行動価値の表示
+    def print_value(self):
+        print(self.value_func.get_Q())
+
+    # 所持パラメータの初期化
+    def init_params(self):
+        self.value_func.init_params()
+        self.policy.init_params()
